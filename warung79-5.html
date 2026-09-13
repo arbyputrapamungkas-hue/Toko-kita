@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>warung 79 — terminal kasir</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a120e;
+    --surface:#0f1c15;
+    --surface2:#132419;
+    --line:#1e3b2a;
+    --text:#bdf3cd;
+    --text-dim:#5f8f74;
+    --accent:#3fe38a;
+    --accent-dim:#1f7a4f;
+    --error:#ff7a6b;
+    --amber:#f2c14e;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(circle at 50% 0%, rgba(63,227,138,0.06), transparent 60%),
+      var(--bg);
+    color:var(--text);
+    font-family:'JetBrains Mono', ui-monospace, Consolas, monospace;
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:24px 14px;
+  }
+  .crt{
+    position:relative;
+    width:100%;
+    max-width:460px;
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:12px;
+    overflow:hidden;
+    box-shadow:
+      0 0 0 1px rgba(63,227,138,0.06),
+      0 20px 50px -20px rgba(0,0,0,0.6),
+      0 0 40px -10px rgba(63,227,138,0.08);
+  }
+  .crt::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    pointer-events:none;
+    background:repeating-linear-gradient(
+      to bottom,
+      rgba(255,255,255,0.025) 0px,
+      rgba(255,255,255,0.025) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+    z-index:2;
+  }
+  .titlebar{
+    background:var(--surface2);
+    padding:12px 16px;
+    border-bottom:1px solid var(--line);
+    font-size:12px;
+    color:var(--text-dim);
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    letter-spacing:0.03em;
+  }
+  .titlebar .dots{display:flex;gap:6px;}
+  .titlebar .dot{width:8px;height:8px;border-radius:50%;background:var(--line);}
+  .titlebar .dot.on{background:var(--accent-dim);}
+  .screen{
+    padding:26px 22px 26px;
+    min-height:380px;
+    position:relative;
+    z-index:1;
+    animation:fadein .35s ease;
+  }
+  @media (prefers-reduced-motion: reduce){
+    .screen{animation:none;}
+  }
+  @keyframes fadein{
+    from{opacity:0; transform:translateY(4px);}
+    to{opacity:1; transform:translateY(0);}
+  }
+  .hidden{display:none;}
+  .line{
+    margin:0 0 10px;
+    font-size:14px;
+    line-height:1.65;
+    white-space:pre-wrap;
+  }
+  .heading{
+    font-size:13px;
+    letter-spacing:0.04em;
+    color:var(--accent);
+    text-shadow:0 0 12px rgba(63,227,138,0.35);
+    margin:0 0 16px;
+    padding-bottom:10px;
+    border-bottom:1px solid var(--line);
+  }
+  .dim{color:var(--text-dim);}
+  .amber{color:var(--amber);}
+  .accent{color:var(--accent);}
+  .prompt-row{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-top:14px;
+  }
+  .prompt-row .caret{color:var(--accent); text-shadow:0 0 8px rgba(63,227,138,0.5);}
+  input{
+    flex:1;
+    background:transparent;
+    border:none;
+    border-bottom:1px solid var(--line);
+    color:var(--text);
+    font-family:inherit;
+    font-size:14px;
+    padding:8px 2px;
+    outline:none;
+    transition:border-color .15s ease;
+  }
+  input:focus{border-bottom-color:var(--accent);}
+  input::placeholder{color:var(--text-dim);}
+  button{
+    font-family:inherit;
+    font-size:13px;
+    letter-spacing:0.02em;
+    background:var(--accent-dim);
+    color:#eafff0;
+    border:1px solid var(--accent);
+    border-radius:5px;
+    padding:10px 16px;
+    cursor:pointer;
+    margin-top:18px;
+    transition:background .15s ease, box-shadow .15s ease, transform .05s ease;
+  }
+  button:hover{background:var(--accent);color:#04140a;box-shadow:0 0 16px -2px rgba(63,227,138,0.5);}
+  button:active{transform:scale(0.98);}
+  button:focus-visible, input:focus-visible{outline:1px solid var(--accent); outline-offset:2px;}
+  .err{
+    color:var(--error);
+    font-size:13px;
+    margin-top:10px;
+    min-height:16px;
+  }
+  .menu-list{
+    border:1px solid var(--line);
+    border-radius:6px;
+    overflow:hidden;
+  }
+  .menu-list div{
+    font-size:14px;
+    padding:10px 12px;
+    border-bottom:1px solid var(--line);
+  }
+  .menu-list div:last-child{border-bottom:none;}
+  .menu-list .num{color:var(--accent); margin-right:6px;}
+  .item-card{
+    margin-top:16px;
+    border:1px solid var(--accent-dim);
+    border-radius:8px;
+    padding:20px 18px;
+    background:linear-gradient(180deg, rgba(63,227,138,0.05), transparent);
+  }
+  .item-name{font-size:16px;color:var(--text);margin-bottom:8px;}
+  .item-price{font-size:24px;color:var(--accent);font-weight:700;margin-bottom:6px;text-shadow:0 0 14px rgba(63,227,138,0.35);}
+  .item-stock{font-size:12px;color:var(--text-dim);}
+  .back-hint{margin-top:18px;font-size:12px;color:var(--text-dim);}
+  .flicker{animation:flicker 2.5s infinite;}
+  @media (prefers-reduced-motion: no-preference){
+    @keyframes flicker{0%,96%,100%{opacity:1;}97%{opacity:0.85;}}
+  }
+</style>
+</head>
+<body>
+<div class="crt">
+  <div class="titlebar">
+    <span>warung 79 — kasir</span>
+    <span class="dots"><span class="dot"></span><span class="dot"></span><span class="dot on"></span></span>
+  </div>
+
+  <!-- LOGIN SCREEN -->
+  <div class="screen" id="screen-login">
+    <p class="heading">masuk sistem</p>
+    <p class="line">Ketik username dan password lalu tekan masuk.</p>
+    <div class="prompt-row">
+      <span class="caret">&gt;</span>
+      <input id="inp-user" type="text" placeholder="username" autocomplete="off">
+    </div>
+    <div class="prompt-row">
+      <span class="caret">&gt;</span>
+      <input id="inp-pass" type="password" placeholder="password" autocomplete="off">
+    </div>
+    <div class="err" id="login-err"></div>
+    <button id="btn-login">masuk</button>
+    <p class="back-hint">akun demo: rina / toko123  atau  budi / belanja99</p>
+  </div>
+
+  <!-- MENU SCREEN -->
+  <div class="screen hidden" id="screen-menu">
+    <p class="heading" id="menu-welcome">menu utama</p>
+    <div class="menu-list" id="menu-list"></div>
+    <div class="prompt-row">
+      <span class="caret">&gt;</span>
+      <input id="inp-menu" type="text" inputmode="numeric" placeholder="ketik 1-4" autocomplete="off" maxlength="1">
+    </div>
+    <div class="err" id="menu-err"></div>
+    <button id="btn-menu">pilih</button>
+  </div>
+
+  <!-- PRODUCT SCREEN -->
+  <div class="screen hidden" id="screen-produk">
+    <p class="heading" id="produk-title">barang</p>
+    <div class="item-card">
+      <div class="item-name" id="produk-nama">-</div>
+      <div class="item-price" id="produk-harga">-</div>
+      <div class="item-stock" id="produk-stok">-</div>
+    </div>
+    <button id="btn-produk">selesai</button>
+  </div>
+
+  <!-- EXIT SCREEN -->
+  <div class="screen hidden" id="screen-selesai">
+    <p class="heading accent flicker">selesai</p>
+    <p class="line">Terima kasih sudah mampir, <span id="exit-name"></span>.</p>
+    <p class="line dim">Sesi ditutup. Sampai jumpa lagi.</p>
+    <button id="btn-restart">menu awal</button>
+  </div>
+
+</div>
+
+<script>
+  const users = { rina: 'toko123', budi: 'belanja99' };
+  const catalog = {
+    1: { nama: 'beras 5kg', harga: 68000, stok: 42 },
+    2: { nama: 'minyak goreng 1l', harga: 21000, stok: 30 },
+    3: { nama: 'kopi sachet', harga: 2000, stok: 120 },
+  };
+
+  let currentUser = '';
+
+  const screens = {
+    login: document.getElementById('screen-login'),
+    menu: document.getElementById('screen-menu'),
+    produk: document.getElementById('screen-produk'),
+    selesai: document.getElementById('screen-selesai'),
+  };
+  function show(name){
+    Object.values(screens).forEach(s => s.classList.add('hidden'));
+    screens[name].classList.remove('hidden');
+  }
+
+  function formatRp(n){
+    return 'Rp ' + n.toLocaleString('id-ID');
+  }
+
+  // ---- LOGIN ----
+  const inpUser = document.getElementById('inp-user');
+  const inpPass = document.getElementById('inp-pass');
+  const loginErr = document.getElementById('login-err');
+
+  function attemptLogin(){
+    const u = inpUser.value.trim().toLowerCase();
+    const p = inpPass.value;
+    if (!u || !p){
+      loginErr.textContent = 'isi username dan password dulu';
+      return;
+    }
+    if (users[u] && users[u] === p){
+      currentUser = u;
+      loginErr.textContent = '';
+      inpUser.value = '';
+      inpPass.value = '';
+      document.getElementById('menu-welcome').textContent = 'menu utama — masuk sebagai ' + u;
+      renderMenuList();
+      show('menu');
+      document.getElementById('inp-menu').focus();
+    } else {
+      loginErr.textContent = 'tidak — username atau password salah, coba lagi';
+      inpPass.value = '';
+      inpPass.focus();
+    }
+  }
+  document.getElementById('btn-login').addEventListener('click', attemptLogin);
+  inpPass.addEventListener('keydown', e => { if (e.key === 'Enter') attemptLogin(); });
+  inpUser.addEventListener('keydown', e => { if (e.key === 'Enter') inpPass.focus(); });
+
+  // ---- MENU ----
+  const inpMenu = document.getElementById('inp-menu');
+  const menuErr = document.getElementById('menu-err');
+
+  function renderMenuList(){
+    const list = document.getElementById('menu-list');
+    list.innerHTML = '';
+    [1, 2, 3].forEach(k => {
+      const row = document.createElement('div');
+      row.innerHTML = '<span class="num">' + k + '</span> — menu ' + k;
+      list.appendChild(row);
+    });
+    const exitRow = document.createElement('div');
+    exitRow.innerHTML = '<span class="num">4</span> — keluar';
+    list.appendChild(exitRow);
+  }
+
+  function attemptMenu(){
+    const choice = inpMenu.value.trim();
+    menuErr.textContent = '';
+    if (choice === '1' || choice === '2' || choice === '3'){
+      openProduk(Number(choice));
+    } else if (choice === '4'){
+      doExit();
+    } else {
+      menuErr.textContent = 'ketik angka 1, 2, 3, atau 4';
+    }
+    inpMenu.value = '';
+  }
+  document.getElementById('btn-menu').addEventListener('click', attemptMenu);
+  inpMenu.addEventListener('keydown', e => { if (e.key === 'Enter') attemptMenu(); });
+
+  // ---- PRODUK ----
+  function openProduk(nomor){
+    const data = catalog[nomor];
+    document.getElementById('produk-title').textContent = 'barang ' + nomor;
+    document.getElementById('produk-nama').textContent = data.nama;
+    document.getElementById('produk-harga').textContent = formatRp(data.harga);
+    document.getElementById('produk-stok').textContent = 'stok: ' + data.stok;
+    show('produk');
+    document.getElementById('inp-produk').focus();
+  }
+  document.getElementById('btn-produk').addEventListener('click', doExit);
+
+  // ---- EXIT ----
+  function doExit(){
+    document.getElementById('exit-name').textContent = currentUser;
+    show('selesai');
+  }
+  document.getElementById('btn-restart').addEventListener('click', () => {
+    currentUser = '';
+    show('login');
+    inpUser.focus();
+  });
+</script>
+</body>
+</html>
